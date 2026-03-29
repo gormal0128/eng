@@ -228,6 +228,58 @@ if final_image is not None:
             except Exception as e:
                 st.error(f"오류가 발생했습니다: {e}")
                 st.write("프롬프트 결과가 JSON 형식이 아니거나, 이미지가 명확하지 않을 수 있습니다. 다시 시도해 보세요.")
+                
+                # ... (앞부분: 4. 답지 출력 코드) ...
+                with col2:
+                    st.markdown("**[3번 답]**")
+                    for item in quiz3_data:
+                        st.write(item.get('word_in_example', ''))
+                
+                # ==========================================
+                # 🚀 새롭게 추가되는 다운로드(저장) 기능 부분
+                # ==========================================
+                st.markdown("---")
+                st.subheader("💾 만든 시험지 저장하기")
+                
+                # 저장할 텍스트 내용을 하나로 묶기
+                export_text = "📝 나만의 영어 단어 시험지 📝\n\n"
+                
+                export_text += "[1. 단어 리스트]\n"
+                for i, item in enumerate(word_data, 1):
+                    export_text += f"{i}. {item.get('word', '')}\n"
+                    export_text += f"  - 영문뜻: {item.get('eng_def', '')}\n"
+                    export_text += f"  - 한국어: {item.get('kor_def', '')}\n"
+                    export_text += f"  - 예문: {item.get('example', '')}\n"
+                    export_text += f"  - 해석: {item.get('example_kor', '')}\n\n"
+                
+                export_text += "------------------------\n\n[2. 영문뜻 보고 단어 맞추기]\n"
+                for item in quiz2_data:
+                    export_text += f"- {item.get('eng_def', '')}\n"
+                
+                export_text += "\n------------------------\n\n[3. 예문 빈칸 채우기]\n"
+                for item in quiz3_data:
+                    target = item.get('word_in_example', '')
+                    ex = item.get('example', '')
+                    if target and ex:
+                        blanked = ex.replace(target, "______").replace(target.capitalize(), "______")
+                        export_text += f"- {blanked}\n"
+                    else:
+                        export_text += f"- {ex}\n"
+                
+                export_text += "\n------------------------\n\n[정답지]\n"
+                export_text += "2번 답:\n"
+                for item in quiz2_data:
+                    export_text += f"{item.get('word', '')} - {item.get('kor_def', '')}\n"
+                export_text += "\n3번 답:\n"
+                for item in quiz3_data:
+                    export_text += f"{item.get('word_in_example', '')}\n"
 
+                # 다운로드 버튼 생성
+                st.download_button(
+                    label="📥 텍스트 파일(.txt)로 다운로드",
+                    data=export_text,
+                    file_name="voca_quiz.txt",
+                    mime="text/plain"
+                )
 elif uploaded_file is None:
     st.info("단어장 사진을 업로드 해주세요.")
