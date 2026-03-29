@@ -43,7 +43,7 @@ if final_image is not None:
                 # 사용자가 지정한 최신 Flash 모델 사용
                 model = genai.GenerativeModel('gemini-flash-latest')
 
-                # (이하 기존 프롬프트 및 API 호출 로직은 이전 코드와 완전히 동일합니다)
+                # (프롬프트 내용은 동일하게 유지...)
                 prompt = """
                 당신은 영어 교육 전문가입니다. 첨부된 이미지에서 단어, 영어 뜻풀이, 예문을 추출하고 한국어로 번역하여 아래의 엄격한 JSON 형식으로만 반환하세요.
                 마크다운 코드 블록(```json ... ```)을 사용하지 말고 오직 JSON 텍스트만 출력하세요.
@@ -72,18 +72,94 @@ if final_image is not None:
                 # API 호출
                 response = model.generate_content([prompt, image])
                 
-                # 응답에서 불필요한 마크다운 텍스트 제거 (안전장치)
-                result_text = response.text.strip().removeprefix('```json').removesuffix('```').strip()
-                
-                # JSON 파싱
-                word_data = json.loads(result_text)
+                # 마크다운 찌꺼기(```json 등)를 더 강력하게 제거하는 안전장치
+                result_text = response.text.strip()
+                if result_text.startswith("```"):
+                    result_text = result_text.split("\n", 1)[-1]
+                    result_text = result_text.rsplit("\n", 1)[0]
+                result_text = result_text.strip()
 
                 st.success("데이터 추출 완료! 아래에서 결과를 확인하세요.")
                 st.markdown("---")
 
-                # (이하 결과물 출력 부분도 이전 코드와 동일하게 유지하세요)
+                # 🚨 [디버깅용] AI가 실제로 보낸 텍스트를 화면에 그대로 찍어봅니다.
+                with st.expander("🛠️ AI 원본 데이터 확인 (클릭해서 열기)"):
+                    st.code(result_text, language="json")
+
+                # JSON 파싱
+                word_data = json.loads(result_text)
+
+                # 🚨 [안전장치] AI가 리스트가 아니라 딕셔너리로 보냈을 경우를 대비 (예: {"words": [...]})
+                if isinstance(word_data, dict):
+                    for key in word_data:
+                        if isinstance(word_data[key], list):
+                            word_data = word_data[key]
+                            break
+
+                # ----------------------------------------
+                # 3. 결과물 화면 출력
+                # ----------------------------------------
+
+                # [요구사항 1] 전체 리스트 출력
+                st.subheader("1. 영문뜻 + 한국어해석 + 예문 + 해석")
+                for i, item in enumerate(word_data, 1):
+                    # AI가 가끔 키값을 빼먹는 경우를 대비해 get() 사용
+                    word = item.get('word', 'N/A')
+                    eng_def = item.get('eng_def', 'N/A')
+                    kor_def = item.get('kor_def', 'N/A')
+                    example = item.get('example', 'N/A')
+                    example_kor = item.get('example_kor', 'N/A')
+
+                    st.markdown(f"**{i}. {word}**")
+                    st.write(f"- 영문뜻: {eng_def}")
+                    st.write(f"- 한국어해석: {kor_def}")
+                    st.write(f"- 예문: {example}")
+                    st.write(f"- 해석: {example_kor}")
+                    st.write("")
+
+                st.markdown("---")
+
+                # [요구사항 2] 뜻 보고 단어 맞추기 (랜덤)
+                st.subheader("2. 영문뜻 → 단어/뜻 쓰기 (랜덤)")
+                quiz2_data = word_data.copy()
+                random.shuffle(quiz2_data)
                 
-                # ... [요구사항 1, 2, 3, 4 출력 로직] ...
+                for item in quiz2_data:
+                    st.write(f"- {item.get('eng_def', '')}")
+                
+                st.markdown("---")
+
+                # [요구사항 3] 예문 빈칸 문제 (랜덤)
+                st.subheader("3. 예문 빈칸 문제 (랜덤)")
+                quiz3_data = word_data.copy()
+                random.shuffle(quiz3_data)
+
+                for item in quiz3_data:
+                    target_word = item.get('word_in_example', '')
+                    example_text = item.get('example', '')
+                    
+                    if target_word and example_text:
+                        blanked_example = example_text.replace(target_word, "______")
+                        blanked_example = blanked_example.replace(target_word.capitalize(), "______")
+                        st.write(f"- {blanked_example}")
+                    else:
+                        st.write(f"- {example_text}")
+
+                st.markdown("---")
+
+                # [요구사항 4] 답지
+                st.subheader("4. 답지")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**[2번 답]**")
+                    for item in quiz2_data:
+                        st.write(f"{item.get('word', '')} - {item.get('kor_def', '')}")
+                        
+                with col2:
+                    st.markdown("**[3번 답]**")
+                    for item in quiz3_data:
+                        st.write(item.get('word_in_example', ''))
                 
             except Exception as e:
                 st.error(f"오류가 발생했습니다: {e}")
