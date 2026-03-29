@@ -4,8 +4,8 @@ import json
 import random
 from PIL import Image
 
-# config.py에서 API 키 불러오기
-import config
+# Streamlit 서버의 비밀 금고에서 API 키 불러오기
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 # ----------------------------------------
 # 1. 페이지 설정 및 초기화
@@ -13,8 +13,6 @@ import config
 st.set_page_config(page_title="영어 단어 시험지 생성기", page_icon="📝", layout="wide")
 st.title("📸 사진으로 만드는 영어 단어 시험지 📝")
 
-# Gemini API 설정 (config 파일의 키 사용)
-genai.configure(api_key=config.GEMINI_API_KEY)
 
 # ----------------------------------------
 # 2. 메인 로직 (이미지 업로드 및 촬영)
