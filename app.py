@@ -10,9 +10,10 @@ from PIL import Image
 st.set_page_config(page_title="찰칵! AI 영어 단어장", page_icon="📸", layout="wide")
 
 st.title("📸 찰칵! AI 영어 시험지 메이커 📝")
-st.markdown("**영어 단어장 사진을 찍어 올리면, AI가 10초 만에 나만의 시험지를 만들어 줍니다! (누구나 무료)**")
+st.markdown("**영어 단어장 사진을 찍어 올리면, AI가 품사와 발음까지 포함된 나만의 시험지를 만들어 줍니다! (누구나 무료)**")
 st.markdown("---")
 
+# Streamlit 서버의 비밀 금고에서 개발자의 API 키 불러오기
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 except:
@@ -46,15 +47,15 @@ if final_image is not None:
                 try:
                     model = genai.GenerativeModel('gemini-flash-latest')
 
-                    # 💡 [수정됨] 프롬프트에 품사(part_of_speech)와 한국어 발음(pronunciation) 조건 추가
+                    # 💡 [명령 강화] 발음(pronunciation) 추출 명령을 더 구체적이고 강력하게 수정
                     prompt = """
                     당신은 영어 교육 전문가입니다. 첨부된 이미지에서 단어, 영어 뜻풀이, 예문을 추출하고 한국어로 번역하여 아래의 엄격한 JSON 형식으로만 반환하세요.
                     마크다운 코드 블록(```json ... ```)을 사용하지 말고 오직 JSON 텍스트만 출력하세요.
 
                     [조건]
                     1. "part_of_speech": 사진에 적혀있는 품사 기호 (예: v., n., prep., adv., adj. 등. 만약 없다면 빈 문자열 "" 처리)
-                    2. "word_display": 사진에 굵은 글씨로 적힌 단어 원문 전체 (과거형이 함께 적혀있다면 모두 포함, 예: 'press - pressed')
-                    3. "pronunciation": "word"의 가장 정확하고 자연스러운 미국식 영어 발음을 한국어로 표기 (괄호 없이 한글만, 예: 스터디, 프레스, 바운스)
+                    2. "word_display": 사진에 굵은 글씨로 적힌 단어 원문 전체 (과거형이 함께 적혀있다면 모두 포함, 예: 'press - pressed', 'through')
+                    3. "pronunciation": "word_display"의 가장 정확하고 자연스러운 미국식 영어 발음을 한국어로 표기 (예: bright -> 브라이트, study -> 스터디, shut -> 셔트. 괄호 없이 한글만!! 필수!!)
                     4. "word": 빈칸 문제 정답 확인용 기본 단어
                     5. "word_in_example": 예문 안에서 실제로 쓰인 형태
                     6. "eng_def": 사진에 적힌 영어 뜻풀이
@@ -85,10 +86,10 @@ if final_image is not None:
                     # 3. 결과물 화면 출력
                     # ----------------------------------------
                     st.markdown("---")
-                    st.subheader("📖 1단계: 공부하기 (단어 + 예문)")
+                    st.subheader("📖 1단계: 공부하기 (품사 + 단어 + [발음])")
                     for i, item in enumerate(word_data, 1):
                         pos = item.get('part_of_speech', '')
-                        if pos: pos = f"{pos} " # 품사가 있으면 뒤에 띄어쓰기 추가
+                        if pos: pos = f"{pos} " 
                         
                         pronun = item.get('pronunciation', '')
                         if pronun: pronun = f"[{pronun}]" # 한국어 발음에 괄호 씌우기
@@ -99,7 +100,7 @@ if final_image is not None:
                         example = item.get('example', 'N/A')
                         example_kor = item.get('example_kor', 'N/A')
 
-                        # 💡 [수정됨] 화면에 품사 + 단어 + [발음] 형태로 출력
+                        # 💡 [화면 출력 예시 수호] 8) bright [브라이트] 형태로 출력
                         st.markdown(f"**{i}) {pos}{word_display} {pronun}**")
                         st.write(f"  🇺🇸 영문뜻: {eng_def}  \n  🇰🇷 뜻해석: {kor_def}")
                         st.write(f"  📝 예문: {example}  \n  🗣️ 예문해석: {example_kor}")
@@ -137,7 +138,7 @@ if final_image is not None:
                                 if pronun: pronun = f"[{pronun}]"
                                 display_text = item.get('word_display', item.get('word', ''))
                                 
-                                # 💡 [수정됨] 정답지에도 품사와 발음 포함
+                                # 💡 [정답 출력 예시 수호] 답지에도 8) bright [브라이트] 형태로 출력
                                 st.write(f"**{i})** {pos}{display_text} {pronun} - {item.get('kor_def', '')}")
                                 
                         with c2:
@@ -160,7 +161,7 @@ if final_image is not None:
                         pronun = item.get('pronunciation', '')
                         if pronun: pronun = f"[{pronun}]"
                         
-                        # 💡 [수정됨] 저장되는 텍스트 파일에도 품사와 발음 포함
+                        # 💡 [저장 예시 수호] 텍스트 파일에도 8) bright [브라이트] 형태로 저장
                         export_text += f"{i}) {pos}{item.get('word_display', item.get('word', ''))} {pronun}\n"
                         export_text += f"  - 뜻: {item.get('eng_def', '')} ({item.get('kor_def', '')})\n"
                         export_text += f"  - 예문: {item.get('example', '')}\n"
