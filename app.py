@@ -46,18 +46,21 @@ if final_image is not None:
                 try:
                     model = genai.GenerativeModel('gemini-flash-latest')
 
+                    # 💡 [수정됨] 프롬프트에 품사(part_of_speech)와 한국어 발음(pronunciation) 조건 추가
                     prompt = """
                     당신은 영어 교육 전문가입니다. 첨부된 이미지에서 단어, 영어 뜻풀이, 예문을 추출하고 한국어로 번역하여 아래의 엄격한 JSON 형식으로만 반환하세요.
                     마크다운 코드 블록(```json ... ```)을 사용하지 말고 오직 JSON 텍스트만 출력하세요.
 
                     [조건]
-                    1. "word_display": 사진에 굵은 글씨로 적힌 단어 원문 전체 (과거형이 함께 적혀있다면 모두 포함)
-                    2. "word": 빈칸 문제 정답 확인용 기본 단어
-                    3. "word_in_example": 예문 안에서 실제로 쓰인 형태
-                    4. "eng_def": 사진에 적힌 영어 뜻풀이
-                    5. "kor_def": "eng_def"의 한국어 해석
-                    6. "example": 사진에 적힌 영어 예문
-                    7. "example_kor": "example"의 한국어 해석
+                    1. "part_of_speech": 사진에 적혀있는 품사 기호 (예: v., n., prep., adv., adj. 등. 만약 없다면 빈 문자열 "" 처리)
+                    2. "word_display": 사진에 굵은 글씨로 적힌 단어 원문 전체 (과거형이 함께 적혀있다면 모두 포함, 예: 'press - pressed')
+                    3. "pronunciation": "word"의 가장 정확하고 자연스러운 미국식 영어 발음을 한국어로 표기 (괄호 없이 한글만, 예: 스터디, 프레스, 바운스)
+                    4. "word": 빈칸 문제 정답 확인용 기본 단어
+                    5. "word_in_example": 예문 안에서 실제로 쓰인 형태
+                    6. "eng_def": 사진에 적힌 영어 뜻풀이
+                    7. "kor_def": "eng_def"의 한국어 해석
+                    8. "example": 사진에 적힌 영어 예문
+                    9. "example_kor": "example"의 한국어 해석
                     """
 
                     response = model.generate_content([prompt, image])
@@ -84,13 +87,20 @@ if final_image is not None:
                     st.markdown("---")
                     st.subheader("📖 1단계: 공부하기 (단어 + 예문)")
                     for i, item in enumerate(word_data, 1):
+                        pos = item.get('part_of_speech', '')
+                        if pos: pos = f"{pos} " # 품사가 있으면 뒤에 띄어쓰기 추가
+                        
+                        pronun = item.get('pronunciation', '')
+                        if pronun: pronun = f"[{pronun}]" # 한국어 발음에 괄호 씌우기
+                        
                         word_display = item.get('word_display', item.get('word', 'N/A'))
                         eng_def = item.get('eng_def', 'N/A')
                         kor_def = item.get('kor_def', 'N/A')
                         example = item.get('example', 'N/A')
                         example_kor = item.get('example_kor', 'N/A')
 
-                        st.markdown(f"**{i}) {word_display}**")
+                        # 💡 [수정됨] 화면에 품사 + 단어 + [발음] 형태로 출력
+                        st.markdown(f"**{i}) {pos}{word_display} {pronun}**")
                         st.write(f"  🇺🇸 영문뜻: {eng_def}  \n  🇰🇷 뜻해석: {kor_def}")
                         st.write(f"  📝 예문: {example}  \n  🗣️ 예문해석: {example_kor}")
                         st.write("")
@@ -99,7 +109,6 @@ if final_image is not None:
                     st.subheader("🎯 2단계: 시험 1 (뜻 보고 단어 맞추기)")
                     quiz2_data = word_data.copy()
                     random.shuffle(quiz2_data)
-                    # 💡 [수정] 1) 2) 3) 번호 매기기 적용
                     for i, item in enumerate(quiz2_data, 1):
                         st.write(f"**{i})** {item.get('eng_def', '')}")
                     
@@ -107,7 +116,6 @@ if final_image is not None:
                     st.subheader("🎯 3단계: 시험 2 (예문 빈칸 채우기)")
                     quiz3_data = word_data.copy()
                     random.shuffle(quiz3_data)
-                    # 💡 [수정] 1) 2) 3) 번호 매기기 적용
                     for i, item in enumerate(quiz3_data, 1):
                         target_word = item.get('word_in_example', '')
                         example_text = item.get('example', '')
@@ -122,13 +130,18 @@ if final_image is not None:
                         c1, c2 = st.columns(2)
                         with c1:
                             st.markdown("**[시험 1 정답]**")
-                            # 💡 [수정] 1) 2) 3) 번호 매기기 적용
                             for i, item in enumerate(quiz2_data, 1):
+                                pos = item.get('part_of_speech', '')
+                                if pos: pos = f"{pos} "
+                                pronun = item.get('pronunciation', '')
+                                if pronun: pronun = f"[{pronun}]"
                                 display_text = item.get('word_display', item.get('word', ''))
-                                st.write(f"**{i})** {display_text} - {item.get('kor_def', '')}")
+                                
+                                # 💡 [수정됨] 정답지에도 품사와 발음 포함
+                                st.write(f"**{i})** {pos}{display_text} {pronun} - {item.get('kor_def', '')}")
+                                
                         with c2:
                             st.markdown("**[시험 2 정답]**")
-                            # 💡 [수정] 1) 2) 3) 번호 매기기 적용
                             for i, item in enumerate(quiz3_data, 1):
                                 st.write(f"**{i})** {item.get('word_in_example', '')}")
 
@@ -142,18 +155,22 @@ if final_image is not None:
                     export_text = "📝 나만의 영어 단어 시험지 📝\n\n"
                     export_text += "[1. 단어 리스트]\n"
                     for i, item in enumerate(word_data, 1):
-                        export_text += f"{i}) {item.get('word_display', item.get('word', ''))}\n"
+                        pos = item.get('part_of_speech', '')
+                        if pos: pos = f"{pos} "
+                        pronun = item.get('pronunciation', '')
+                        if pronun: pronun = f"[{pronun}]"
+                        
+                        # 💡 [수정됨] 저장되는 텍스트 파일에도 품사와 발음 포함
+                        export_text += f"{i}) {pos}{item.get('word_display', item.get('word', ''))} {pronun}\n"
                         export_text += f"  - 뜻: {item.get('eng_def', '')} ({item.get('kor_def', '')})\n"
                         export_text += f"  - 예문: {item.get('example', '')}\n"
                         export_text += f"  - 해석: {item.get('example_kor', '')}\n\n"
                     
                     export_text += "------------------------\n\n[2. 뜻 보고 단어 맞추기]\n"
-                    # 💡 [수정] 1) 2) 3) 번호 매기기 적용
                     for i, item in enumerate(quiz2_data, 1):
                         export_text += f"{i}) {item.get('eng_def', '')}\n"
                     
                     export_text += "\n------------------------\n\n[3. 예문 빈칸 채우기]\n"
-                    # 💡 [수정] 1) 2) 3) 번호 매기기 적용
                     for i, item in enumerate(quiz3_data, 1):
                         target = item.get('word_in_example', '')
                         ex = item.get('example', '')
@@ -164,11 +181,15 @@ if final_image is not None:
                     
                     export_text += "\n------------------------\n\n[정답지]\n"
                     export_text += "시험 1 답:\n"
-                    # 💡 [수정] 1) 2) 3) 번호 매기기 적용
                     for i, item in enumerate(quiz2_data, 1):
-                        export_text += f"{i}) {item.get('word_display', item.get('word', ''))} - {item.get('kor_def', '')}\n"
+                        pos = item.get('part_of_speech', '')
+                        if pos: pos = f"{pos} "
+                        pronun = item.get('pronunciation', '')
+                        if pronun: pronun = f"[{pronun}]"
+                        
+                        export_text += f"{i}) {pos}{item.get('word_display', item.get('word', ''))} {pronun} - {item.get('kor_def', '')}\n"
+                        
                     export_text += "\n시험 2 답:\n"
-                    # 💡 [수정] 1) 2) 3) 번호 매기기 적용
                     for i, item in enumerate(quiz3_data, 1):
                         export_text += f"{i}) {item.get('word_in_example', '')}\n"
 
