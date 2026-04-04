@@ -10,7 +10,7 @@ from PIL import Image
 st.set_page_config(page_title="찰칵! AI 영어 단어장", page_icon="📸", layout="wide")
 
 st.title("📸 찰칵! AI 영어 시험지 메이커 📝")
-st.markdown("**영어 단어장 사진을 찍어 올리면, AI가 품사와 발음까지 포함된 나만의 시험지를 만들어 줍니다! (누구나 무료)**")
+st.markdown("**영어 단어장 사진을 찍어 올리면, AI가 모든 영어의 품사와 발음까지 포함된 나만의 시험지를 만들어 줍니다! (누구나 무료)**")
 st.markdown("---")
 
 # Streamlit 서버의 비밀 금고에서 개발자의 API 키 불러오기
@@ -47,7 +47,7 @@ if final_image is not None:
                 try:
                     model = genai.GenerativeModel('gemini-flash-latest')
 
-                    # 💡 [명령 강화] 발음(pronunciation) 추출 명령을 더 구체적이고 강력하게 수정
+                    # 💡 [명령 강화] 모든 영어 문장에 대해 한국어 발음을 추출하라는 명령을 추가
                     prompt = """
                     당신은 영어 교육 전문가입니다. 첨부된 이미지에서 단어, 영어 뜻풀이, 예문을 추출하고 한국어로 번역하여 아래의 엄격한 JSON 형식으로만 반환하세요.
                     마크다운 코드 블록(```json ... ```)을 사용하지 말고 오직 JSON 텍스트만 출력하세요.
@@ -55,13 +55,15 @@ if final_image is not None:
                     [조건]
                     1. "part_of_speech": 사진에 적혀있는 품사 기호 (예: v., n., prep., adv., adj. 등. 만약 없다면 빈 문자열 "" 처리)
                     2. "word_display": 사진에 굵은 글씨로 적힌 단어 원문 전체 (과거형이 함께 적혀있다면 모두 포함, 예: 'press - pressed', 'through')
-                    3. "pronunciation": "word_display"의 가장 정확하고 자연스러운 미국식 영어 발음을 한국어로 표기 (예: bright -> 브라이트, study -> 스터디, shut -> 셔트. 괄호 없이 한글만!! 필수!!)
+                    3. "pronunciation": "word_display"의 가장 정확하고 자연스러운 미국식 영어 발음을 한국어로 표기 (예: bright -> 브라이트. 한글만!!)
                     4. "word": 빈칸 문제 정답 확인용 기본 단어
                     5. "word_in_example": 예문 안에서 실제로 쓰인 형태
                     6. "eng_def": 사진에 적힌 영어 뜻풀이
-                    7. "kor_def": "eng_def"의 한국어 해석
-                    8. "example": 사진에 적힌 영어 예문
-                    9. "example_kor": "example"의 한국어 해석
+                    7. "eng_def_pronunciation": "eng_def"의 가장 정확하고 자연스러운 미국식 영어 발음을 한국어로 표기 (예: from one side -> 프럼 원 사이드. 한글만!! 필수!!)
+                    8. "kor_def": "eng_def"의 한국어 해석
+                    9. "example": 사진에 적힌 영어 예문
+                    10. "example_pronunciation": "example"의 가장 정확하고 자연스러운 미국식 영어 발음을 한국어로 표기 (예: Scott and Robby -> 스캇 앤 로비. 한글만!! 필수!!)
+                    11. "example_kor": "example"의 한국어 해석
                     """
 
                     response = model.generate_content([prompt, image])
@@ -86,7 +88,7 @@ if final_image is not None:
                     # 3. 결과물 화면 출력
                     # ----------------------------------------
                     st.markdown("---")
-                    st.subheader("📖 1단계: 공부하기 (품사 + 단어 + [발음])")
+                    st.subheader("📖 1단계: 공부하기 (품사 + 단어 + 모든 영어 [발음])")
                     for i, item in enumerate(word_data, 1):
                         pos = item.get('part_of_speech', '')
                         if pos: pos = f"{pos} " 
@@ -96,14 +98,24 @@ if final_image is not None:
                         
                         word_display = item.get('word_display', item.get('word', 'N/A'))
                         eng_def = item.get('eng_def', 'N/A')
+                        
+                        # 💡 [발음 추가] 뜻풀이의 영어 발음을 가져와 괄호로 묶음
+                        eng_def_pronun = item.get('eng_def_pronunciation', '')
+                        if eng_def_pronun: eng_def_pronun = f"[{eng_def_pronun}]"
+
                         kor_def = item.get('kor_def', 'N/A')
                         example = item.get('example', 'N/A')
+                        
+                        # 💡 [발음 추가] 예문의 영어 발음을 가져와 괄호로 묶음
+                        example_pronun = item.get('example_pronunciation', '')
+                        if example_pronun: example_pronun = f"[{example_pronun}]"
+
                         example_kor = item.get('example_kor', 'N/A')
 
-                        # 💡 [화면 출력 예시 수호] 8) bright [브라이트] 형태로 출력
                         st.markdown(f"**{i}) {pos}{word_display} {pronun}**")
-                        st.write(f"  🇺🇸 영문뜻: {eng_def}  \n  🇰🇷 뜻해석: {kor_def}")
-                        st.write(f"  📝 예문: {example}  \n  🗣️ 예문해석: {example_kor}")
+                        # 💡 [화면 출력 수호] 뜻풀이와 예문에 발음([발음]) 추가
+                        st.write(f"  🇺🇸 영문뜻: {eng_def} {eng_def_pronun}  \n  🇰🇷 뜻해석: {kor_def}")
+                        st.write(f"  📝 예문: {example} {example_pronun}  \n  🗣️ 예문해석: {example_kor}")
                         st.write("")
 
                     st.markdown("---")
@@ -111,7 +123,10 @@ if final_image is not None:
                     quiz2_data = word_data.copy()
                     random.shuffle(quiz2_data)
                     for i, item in enumerate(quiz2_data, 1):
-                        st.write(f"**{i})** {item.get('eng_def', '')}")
+                        # 💡 [시험 수호] 시험 문제에도 뜻풀이의 영어와 함께 발음을 출력
+                        eng_def_pronun = item.get('eng_def_pronunciation', '')
+                        if eng_def_pronun: eng_def_pronun = f"[{eng_def_pronun}]"
+                        st.write(f"**{i})** {item.get('eng_def', '')} {eng_def_pronun}")
                     
                     st.markdown("---")
                     st.subheader("🎯 3단계: 시험 2 (예문 빈칸 채우기)")
@@ -120,11 +135,16 @@ if final_image is not None:
                     for i, item in enumerate(quiz3_data, 1):
                         target_word = item.get('word_in_example', '')
                         example_text = item.get('example', '')
+                        # New field
+                        example_pronun = item.get('example_pronunciation', '')
+                        if example_pronun: example_pronun = f"[{example_pronun}]"
+
                         if target_word and example_text:
                             blanked_example = example_text.replace(target_word, "______").replace(target_word.capitalize(), "______")
-                            st.write(f"**{i})** {blanked_example}")
+                            # 💡 [시험 수호] 시험 문제에도 예문의 영어와 함께 발음을 출력
+                            st.write(f"**{i})** {blanked_example} {example_pronun}")
                         else:
-                            st.write(f"**{i})** {example_text}")
+                            st.write(f"**{i})** {example_text} {example_pronun}")
 
                     st.markdown("---")
                     with st.expander("👀 정답지 확인하기 (클릭!)"):
@@ -137,14 +157,16 @@ if final_image is not None:
                                 pronun = item.get('pronunciation', '')
                                 if pronun: pronun = f"[{pronun}]"
                                 display_text = item.get('word_display', item.get('word', ''))
-                                
-                                # 💡 [정답 출력 예시 수호] 답지에도 8) bright [브라이트] 형태로 출력
                                 st.write(f"**{i})** {pos}{display_text} {pronun} - {item.get('kor_def', '')}")
                                 
                         with c2:
                             st.markdown("**[시험 2 정답]**")
                             for i, item in enumerate(quiz3_data, 1):
-                                st.write(f"**{i})** {item.get('word_in_example', '')}")
+                                # 💡 [답지 수호] 답지에도 단어의 원문과 함께 발음을 포함시켜 더 명확하게 함
+                                pronun = item.get('pronunciation', '')
+                                if pronun: pronun = f"[{pronun}]"
+                                display_text = item.get('word_display', item.get('word', ''))
+                                st.write(f"**{i})** {display_text} {pronun}")
 
                     # ----------------------------------------
                     # 4. 저장 기능
@@ -161,24 +183,37 @@ if final_image is not None:
                         pronun = item.get('pronunciation', '')
                         if pronun: pronun = f"[{pronun}]"
                         
-                        # 💡 [저장 예시 수호] 텍스트 파일에도 8) bright [브라이트] 형태로 저장
+                        # New fields
+                        eng_def_pronun = item.get('eng_def_pronunciation', '')
+                        if eng_def_pronun: eng_def_pronun = f"[{eng_def_pronun}]"
+                        example_pronun = item.get('example_pronunciation', '')
+                        if example_pronun: example_pronun = f"[{example_pronun}]"
+
                         export_text += f"{i}) {pos}{item.get('word_display', item.get('word', ''))} {pronun}\n"
-                        export_text += f"  - 뜻: {item.get('eng_def', '')} ({item.get('kor_def', '')})\n"
-                        export_text += f"  - 예문: {item.get('example', '')}\n"
+                        # 💡 [저장 수호] 저장되는 텍스트 파일에도 뜻풀이와 예문에 발음([발음]) 추가
+                        export_text += f"  - 뜻: {item.get('eng_def', '')} {eng_def_pronun} ({item.get('kor_def', '')})\n"
+                        export_text += f"  - 예문: {item.get('example', '')} {example_pronun}\n"
                         export_text += f"  - 해석: {item.get('example_kor', '')}\n\n"
                     
                     export_text += "------------------------\n\n[2. 뜻 보고 단어 맞추기]\n"
                     for i, item in enumerate(quiz2_data, 1):
-                        export_text += f"{i}) {item.get('eng_def', '')}\n"
+                        # 💡 [저장 수호] 저장되는 텍스트 파일의 시험 문제에도 뜻풀이의 영어와 함께 발음을 출력
+                        eng_def_pronun = item.get('eng_def_pronunciation', '')
+                        if eng_def_pronun: eng_def_pronun = f"[{eng_def_pronun}]"
+                        export_text += f"{i}) {item.get('eng_def', '')} {eng_def_pronun}\n"
                     
                     export_text += "\n------------------------\n\n[3. 예문 빈칸 채우기]\n"
                     for i, item in enumerate(quiz3_data, 1):
                         target = item.get('word_in_example', '')
                         ex = item.get('example', '')
+                        # New field
+                        example_pronun = item.get('example_pronunciation', '')
+                        if example_pronun: example_pronun = f"[{example_pronun}]"
+
                         if target and ex:
-                            export_text += f"{i}) {ex.replace(target, '______').replace(target.capitalize(), '______')}\n"
+                            export_text += f"{i}) {ex.replace(target, '______').replace(target.capitalize(), '______')} {example_pronun}\n"
                         else:
-                            export_text += f"{i}) {ex}\n"
+                            export_text += f"{i}) {ex} {example_pronun}\n"
                     
                     export_text += "\n------------------------\n\n[정답지]\n"
                     export_text += "시험 1 답:\n"
@@ -187,12 +222,15 @@ if final_image is not None:
                         if pos: pos = f"{pos} "
                         pronun = item.get('pronunciation', '')
                         if pronun: pronun = f"[{pronun}]"
-                        
                         export_text += f"{i}) {pos}{item.get('word_display', item.get('word', ''))} {pronun} - {item.get('kor_def', '')}\n"
                         
                     export_text += "\n시험 2 답:\n"
                     for i, item in enumerate(quiz3_data, 1):
-                        export_text += f"{i}) {item.get('word_in_example', '')}\n"
+                        # 💡 [답지 수호] 저장되는 텍스트 파일 답지에도 단어의 원문과 함께 발음을 포함
+                        pronun = item.get('pronunciation', '')
+                        if pronun: pronun = f"[{pronun}]"
+                        display_text = item.get('word_display', item.get('word', ''))
+                        export_text += f"{i}) {display_text} {pronun}\n"
 
                     st.download_button(
                         label="📥 텍스트 파일(.txt)로 다운로드",
