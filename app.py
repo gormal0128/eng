@@ -67,7 +67,6 @@ if final_image is not None:
 
                     response = model.generate_content([prompt, image])
                     
-                    # 결과 텍스트 정제
                     result_text = response.text.strip()
                     if result_text.startswith("```"):
                         result_text = result_text.split("\n", 1)[-1].rsplit("\n", 1)[0]
@@ -122,7 +121,6 @@ if final_image is not None:
                         target = item.get('word_in_example', '')
                         ex_text = item.get('example', '')
                         
-                        # 💡 [핵심 수정] 3단계에서는 정답 스포일러 방지를 위해 발음(ex_pron)을 아예 출력하지 않습니다!
                         if target:
                             blanked = ex_text.replace(target, "______").replace(target.capitalize(), "______")
                             st.write(f"**{i})** {blanked}") 
@@ -144,8 +142,8 @@ if final_image is not None:
                             for i, item in enumerate(quiz3, 1):
                                 st.write(f"{i}) {item.get('word_in_example')}")
 
-                    # 텍스트 저장용 데이터 생성
-                    export_text = "📝 모든 영어 발음이 포함된 단어 시험지 📝\n\n"
+                    # 💡 [핵심 수정 1] 텍스트 파일 맨 앞에 모바일 깨짐 방지용 비밀 암호(\ufeff) 추가
+                    export_text = "\ufeff📝 모든 영어 발음이 포함된 단어 시험지 📝\n\n"
                     
                     export_text += "[1. 단어 공부하기]\n"
                     for i, item in enumerate(word_data, 1):
@@ -163,7 +161,6 @@ if final_image is not None:
                     for i, item in enumerate(quiz3, 1):
                         target = item.get('word_in_example', '')
                         ex_text = item.get('example', '')
-                        # 💡 [핵심 수정] 다운로드 텍스트 파일의 3단계에서도 발음 스포일러 제거!
                         if target:
                             blanked = ex_text.replace(target, "______").replace(target.capitalize(), "______")
                             export_text += f"{i}) {blanked}\n"
@@ -178,7 +175,14 @@ if final_image is not None:
                     for i, item in enumerate(quiz3, 1):
                         export_text += f"{i}) {item.get('word_in_example')}\n"
 
-                    st.download_button("📥 텍스트 파일로 저장", export_text, file_name="voca_study.txt", use_container_width=True)
+                    # 💡 [핵심 수정 2] 다운로드할 때 명시적으로 utf-8을 사용한다고 선언
+                    st.download_button(
+                        label="📥 텍스트 파일로 저장", 
+                        data=export_text, 
+                        file_name="voca_study.txt", 
+                        mime="text/plain; charset=utf-8",
+                        use_container_width=True
+                    )
 
                 except Exception as e:
                     st.error(f"오류가 발생했습니다. 사진을 다시 찍어보세요! ({e})")
