@@ -47,7 +47,6 @@ if final_image is not None:
                 try:
                     model = genai.GenerativeModel('gemini-flash-latest')
 
-                    # 💡 [프롬프트 대폭 강화] 모든 영어 필드에 대해 한글 발음을 필수적으로 요구
                     prompt = """
                     당신은 영어 교육 전문가입니다. 첨부된 이미지에서 단어, 뜻풀이, 예문을 추출하고 아래 JSON 형식으로 반환하세요.
                     
@@ -122,12 +121,13 @@ if final_image is not None:
                     for i, item in enumerate(quiz3, 1):
                         target = item.get('word_in_example', '')
                         ex_text = item.get('example', '')
-                        ex_pron = item.get('example_pronun', '')
+                        
+                        # 💡 [핵심 수정] 3단계에서는 정답 스포일러 방지를 위해 발음(ex_pron)을 아예 출력하지 않습니다!
                         if target:
                             blanked = ex_text.replace(target, "______").replace(target.capitalize(), "______")
-                            st.write(f"**{i})** {blanked} [{ex_pron}]")
+                            st.write(f"**{i})** {blanked}") 
                         else:
-                            st.write(f"**{i})** {ex_text} [{ex_pron}]")
+                            st.write(f"**{i})** {ex_text}")
 
                     # ----------------------------------------
                     # 5. 정답지 및 다운로드
@@ -136,22 +136,47 @@ if final_image is not None:
                     with st.expander("👀 정답 확인하기"):
                         c1, c2 = st.columns(2)
                         with c1:
-                            st.markdown("**[시험 2 정답]**")
+                            st.markdown("**[시험 1 정답]**")
                             for i, item in enumerate(quiz2, 1):
                                 st.write(f"{i}) {item.get('word_display')} ({item.get('kor_def')})")
                         with c2:
-                            st.markdown("**[시험 3 정답]**")
+                            st.markdown("**[시험 2 정답]**")
                             for i, item in enumerate(quiz3, 1):
                                 st.write(f"{i}) {item.get('word_in_example')}")
 
                     # 텍스트 저장용 데이터 생성
                     export_text = "📝 모든 영어 발음이 포함된 단어 시험지 📝\n\n"
+                    
+                    export_text += "[1. 단어 공부하기]\n"
                     for i, item in enumerate(word_data, 1):
                         export_text += f"{i}) {item.get('word_display')} [{item.get('word_pronun')}]\n"
                         export_text += f"   뜻: {item.get('eng_def')} [{item.get('eng_def_pronun')}]\n"
                         export_text += f"   해석: {item.get('kor_def')}\n"
                         export_text += f"   예문: {item.get('example')} [{item.get('example_pronun')}]\n"
                         export_text += f"   해석: {item.get('example_kor')}\n\n"
+
+                    export_text += "------------------------\n\n[2. 뜻 보고 단어 맞추기]\n"
+                    for i, item in enumerate(quiz2, 1):
+                        export_text += f"{i}) {item.get('eng_def')} [{item.get('eng_def_pronun')}]\n"
+
+                    export_text += "\n------------------------\n\n[3. 예문 빈칸 채우기]\n"
+                    for i, item in enumerate(quiz3, 1):
+                        target = item.get('word_in_example', '')
+                        ex_text = item.get('example', '')
+                        # 💡 [핵심 수정] 다운로드 텍스트 파일의 3단계에서도 발음 스포일러 제거!
+                        if target:
+                            blanked = ex_text.replace(target, "______").replace(target.capitalize(), "______")
+                            export_text += f"{i}) {blanked}\n"
+                        else:
+                            export_text += f"{i}) {ex_text}\n"
+
+                    export_text += "\n------------------------\n\n[정답지]\n"
+                    export_text += "시험 1 답:\n"
+                    for i, item in enumerate(quiz2, 1):
+                        export_text += f"{i}) {item.get('word_display')} - {item.get('kor_def')}\n"
+                    export_text += "\n시험 2 답:\n"
+                    for i, item in enumerate(quiz3, 1):
+                        export_text += f"{i}) {item.get('word_in_example')}\n"
 
                     st.download_button("📥 텍스트 파일로 저장", export_text, file_name="voca_study.txt", use_container_width=True)
 
