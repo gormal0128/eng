@@ -3,6 +3,7 @@ import google.generativeai as genai
 import json
 import random
 from PIL import Image
+import datetime  # 날짜 추가를 위해 필요
 
 # ----------------------------------------
 # 1. 페이지 설정 및 초기화
@@ -10,7 +11,7 @@ from PIL import Image
 st.set_page_config(page_title="찰칵! AI 영어 단어장", page_icon="📸", layout="wide")
 
 st.title("📸 찰칵! AI 영어 시험지 메이커 📝")
-st.markdown("**모바일에서도 잘 보이는 HTML 문서 저장 기능이 추가되었습니다!**")
+st.markdown("**모바일 최적화 HTML 저장 기능이 적용된 대국민용 버전입니다.**")
 st.markdown("---")
 
 # Streamlit 서버의 비밀 금고에서 API 키 불러오기
@@ -42,8 +43,8 @@ if final_image is not None:
         
     with col_main:
         st.info("사진 분석 준비 완료! 버튼을 눌러주세요.")
-        if st.button("🚀 모든 영어에 발음 넣어서 시험지 만들기!", use_container_width=True):
-            with st.spinner("AI가 모든 문장에 한글 발음을 입히고 있어요... (약 15~20초 소요)"):
+        if st.button("🚀 AI 시험지 만들기!", use_container_width=True):
+            with st.spinner("AI가 분석 중입니다... (약 15~20초 소요)"):
                 try:
                     model = genai.GenerativeModel('gemini-flash-latest')
 
@@ -52,11 +53,11 @@ if final_image is not None:
                     
                     [필수 규칙: 모든 영어에는 반드시 한국어 발음을 추가하세요]
                     1. "word_display": 사진 속 단어 원문 (예: press - pressed)
-                    2. "word_pronun": "word_display"의 한글 발음 (예: 프레스 - 프레스트)
+                    2. "word_pronun": "word_display"의 한글 발음
                     3. "eng_def": 영어 뜻풀이 원문
-                    4. "eng_def_pronun": "eng_def" 전체 문장의 한글 발음 (예: [프롬 원 사이드 투 언아더 사이드 오브 썸띵])
+                    4. "eng_def_pronun": "eng_def" 전체 문장의 한글 발음
                     5. "example": 영어 예문 원문
-                    6. "example_pronun": "example" 전체 문장의 한글 발음 (예: [스콧 앤 로비 점프드 뚜루 더 도어])
+                    6. "example_pronun": "example" 전체 문장의 한글 발음
                     7. "kor_def": 뜻풀이의 한국어 해석
                     8. "example_kor": 예문의 한국어 해석
                     9. "word_in_example": 예문 속 정답 단어
@@ -83,7 +84,7 @@ if final_image is not None:
                     # 3. 화면 출력
                     # ----------------------------------------
                     st.markdown("---")
-                    st.subheader("📖 1단계: 발음과 함께 공부하기")
+                    st.subheader("📖 1단계: 공부하기")
                     for i, item in enumerate(word_data, 1):
                         pos = f"{item.get('part_of_speech', '')} " if item.get('part_of_speech') else ""
                         word_display = item.get('word_display', 'N/A')
@@ -96,8 +97,8 @@ if final_image is not None:
                         example_kor = item.get('example_kor', '')
 
                         st.markdown(f"**{i}) {pos}{word_display} {word_pron}**")
-                        st.write(f"  🇺🇸 **뜻:** {eng_def}  \n  🗣️ **발음:** {eng_def_pron}  \n  🇰🇷 **해석:** {kor_def}")
-                        st.write(f"  📝 **예문:** {example}  \n  🗣️ **발음:** {example_pron}  \n  🇰🇷 **해석:** {example_kor}")
+                        st.write(f"  🇺🇸 **뜻:** {eng_def} [{item.get('eng_def_pronun', '')}]  \n  🇰🇷 **해석:** {kor_def}")
+                        st.write(f"  📝 **예문:** {example} [{item.get('example_pronun', '')}]  \n  🇰🇷 **해석:** {example_kor}")
                         st.write("")
 
                     st.markdown("---")
@@ -114,29 +115,22 @@ if final_image is not None:
                     for i, item in enumerate(quiz3, 1):
                         target = item.get('word_in_example', '')
                         ex_text = item.get('example', '')
-                        ex_pron = item.get('example_pronun', '')
+                        # 💡 [수정] 화면 출력 시 한글 발음 제거
                         if target:
                             blanked = ex_text.replace(target, "______").replace(target.capitalize(), "______")
-                            st.write(f"**{i})** {blanked} [{ex_pron}]")
+                            st.write(f"**{i})** {blanked}")
                         else:
-                            st.write(f"**{i})** {ex_text} [{ex_pron}]")
+                            st.write(f"**{i})** {ex_text}")
 
                     # ----------------------------------------
-                    # 4. 저장 데이터 생성 (TXT 및 HTML)
+                    # 4. HTML 데이터 생성 (날짜 추가 & 3단계 발음 제거)
                     # ----------------------------------------
                     st.markdown("---")
-                    st.subheader("💾 시험지 저장하기 (모바일 추천: HTML)")
+                    st.subheader("💾 시험지 저장하기")
                     
-                    # --- TXT 데이터 생성 ---
-                    export_txt = "📝 영어 단어 시험지 (TXT 버전)\n\n"
-                    for i, item in enumerate(word_data, 1):
-                        export_txt += f"{i}) {item.get('word_display')} [{item.get('word_pronun')}]\n"
-                        export_txt += f"   뜻: {item.get('eng_def')} [{item.get('eng_def_pronun')}]\n"
-                        export_txt += f"   해석: {item.get('kor_def')}\n"
-                        export_txt += f"   예문: {item.get('example')} [{item.get('example_pronun')}]\n"
-                        export_txt += f"   해석: {item.get('example_kor')}\n\n"
+                    # 현재 날짜 가져오기
+                    now_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
-                    # --- HTML 데이터 생성 (모바일 가독성 최적화) ---
                     export_html = f"""
                     <!DOCTYPE html>
                     <html lang="ko">
@@ -144,21 +138,27 @@ if final_image is not None:
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                         <style>
-                            body {{ font-family: sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f9; padding: 15px; }}
+                            body {{ font-family: 'Malgun Gothic', sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f9; padding: 15px; }}
                             .container {{ max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }}
-                            h1 {{ text-align: center; color: #2c3e50; font-size: 1.4em; border-bottom: 2px solid #3498db; padding-bottom: 10px; }}
-                            h2 {{ color: #e67e22; border-left: 5px solid #e67e22; padding-left: 10px; margin-top: 30px; font-size: 1.1em; }}
+                            .header {{ text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 15px; margin-bottom: 20px; }}
+                            h1 {{ color: #2c3e50; font-size: 1.5em; margin-bottom: 5px; }}
+                            .date {{ color: #7f8c8d; font-size: 0.9em; }}
+                            h2 {{ color: #e67e22; border-left: 5px solid #e67e22; padding-left: 10px; margin-top: 30px; font-size: 1.2em; }}
                             .item {{ margin-bottom: 20px; padding: 10px; border-bottom: 1px solid #eee; }}
                             .word {{ font-size: 1.1em; font-weight: bold; color: #2980b9; }}
-                            .pronun {{ color: #e74c3c; font-weight: normal; font-size: 0.9em; }}
+                            .pronun {{ color: #e74c3c; font-size: 0.9em; }}
                             .eng {{ color: #2c3e50; font-weight: bold; display: block; margin-top: 5px; }}
                             .kor {{ color: #7f8c8d; font-size: 0.9em; display: block; }}
-                            .box {{ background: #f9f9f9; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 0.95em; }}
+                            .box {{ background: #f9f9f9; padding: 10px; border-radius: 5px; margin-top: 10px; }}
                         </style>
                     </head>
                     <body>
                         <div class="container">
-                            <h1>📝 AI 영어 단어 시험지</h1>
+                            <div class="header">
+                                <h1>📝 AI 영어 단어 시험지</h1>
+                                <p class="date">생성일시: {now_date}</p>
+                            </div>
+
                             <h2>1단계: 공부하기</h2>
                     """
                     for i, item in enumerate(word_data, 1):
@@ -167,19 +167,16 @@ if final_image is not None:
                             <span class="word">{i}) {item.get('part_of_speech', '')} {item.get('word_display')}</span> 
                             <span class="pronun">[{item.get('word_pronun')}]</span>
                             <div class="box">
-                                <span class="eng">뜻: {item.get('eng_def')}</span>
-                                <span class="pronun">[{item.get('eng_def_pronun')}]</span>
+                                <span class="eng">뜻: {item.get('eng_def')} <small class="pronun">[{item.get('eng_def_pronun')}]</small></span>
                                 <span class="kor">해석: {item.get('kor_def')}</span>
                             </div>
                             <div class="box" style="background:#fffbe6;">
-                                <span class="eng">예문: {item.get('example')}</span>
-                                <span class="pronun">[{item.get('example_pronun')}]</span>
+                                <span class="eng">예문: {item.get('example')} <small class="pronun">[{item.get('example_pronun')}]</small></span>
                                 <span class="kor">해석: {item.get('example_kor')}</span>
                             </div>
                         </div>
                         """
                     
-                    # 퀴즈 및 정답 섹션 추가
                     export_html += "<h2>2단계: 뜻 보고 단어 쓰기</h2>"
                     for i, item in enumerate(quiz2, 1):
                         export_html += f"<div class='item'>{i}) {item.get('eng_def')} <br><small class='pronun'>[{item.get('eng_def_pronun')}]</small></div>"
@@ -188,21 +185,37 @@ if final_image is not None:
                     for i, item in enumerate(quiz3, 1):
                         target = item.get('word_in_example', '')
                         ex_text = item.get('example', '')
-                        ex_pron = item.get('example_pronun', '')
+                        # 💡 [수정] HTML 문서에서도 3단계 한글 발음 제거
                         blanked = ex_text.replace(target, "______").replace(target.capitalize(), "______") if target else ex_text
-                        export_html += f"<div class='item'>{i}) {blanked} <br><small class='pronun'>[{ex_pron}]</small></div>"
+                        export_html += f"<div class='item'>{i}) {blanked}</div>"
 
-                    export_html += "</div></body></html>"
+                    # 정답지 섹션 추가
+                    export_html += """
+                    <div style="page-break-before: always;">
+                        <h2>👀 정답지</h2>
+                        <div class="box">
+                            <strong>[2단계 정답]</strong><br>
+                    """
+                    for i, item in enumerate(quiz2, 1):
+                        export_html += f"{i}) {item.get('word_display')} ({item.get('kor_def')})<br>"
+                    
+                    export_html += "</div><div class='box'><strong>[3단계 정답]</strong><br>"
+                    for i, item in enumerate(quiz3, 1):
+                        export_html += f"{i}) {item.get('word_in_example')}<br>"
+                    
+                    export_html += "</div></div></div></body></html>"
 
-                    # 다운로드 버튼 레이아웃
-                    col_txt, col_html = st.columns(2)
-                    with col_txt:
-                        st.download_button("📄 텍스트 파일(.txt) 다운로드", export_txt, file_name="voca_quiz.txt", use_container_width=True)
-                    with col_html:
-                        st.download_button("🌐 HTML 문서(.html) 다운로드", export_html, file_name="voca_quiz.html", mime="text/html", use_container_width=True)
+                    # 💡 [수정] 텍스트 다운로드 버튼 삭제 후 HTML 버튼만 크게 배치
+                    st.download_button(
+                        label="📥 모바일 전용 시험지 다운로드 (.html)",
+                        data=export_html,
+                        file_name=f"voca_quiz_{datetime.datetime.now().strftime('%m%d_%H%M')}.html",
+                        mime="text/html",
+                        use_container_width=True
+                    )
 
                 except Exception as e:
                     st.error(f"오류가 발생했습니다. ({e})")
 
 else:
-    st.info("👈 사진을 찍거나 업로드하면 시험지가 생성됩니다!")
+    st.info("👈 위에서 사진을 찍거나 업로드하면 시험지가 생성됩니다!")
