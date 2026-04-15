@@ -138,5 +138,5 @@ with main_tabs[1]:
                     except Exception as e:
                         st.error(f"번역 중 오류가 발생했습니다: {e}")
 
-else:
+    else:
     st.info("👈 위 탭에서 원하는 기능을 선택하고 사진을 찍어주세요!")
