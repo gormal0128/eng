@@ -84,11 +84,11 @@ with main_tabs[0]:
                         st.error(f"오류: {e}")
 
 # ----------------------------------------
-# 탭 2: 영어 번역 (새로운 기능)
+# 탭 2: 영어 번역 (새로운 기능 - 저장 기능 추가 버전)
 # ----------------------------------------
 with main_tabs[1]:
     st.subheader("🔤 사진 찍어 바로 번역")
-    st.info("영어 동화책이나 문장을 찍으면 한글 발음과 함께 해석해 드립니다.")
+    st.info("영어 문장을 찍으면 한글 발음과 해석을 보여주고 파일로 저장할 수 있습니다.")
     
     sub_tab3, sub_tab4 = st.tabs(["📸 카메라", "📁 앨범"])
     with sub_tab3:
@@ -109,14 +109,12 @@ with main_tabs[1]:
                 with st.spinner("문장을 읽고 번역하는 중입니다..."):
                     try:
                         model = genai.GenerativeModel('gemini-flash-latest')
-                        # 번역 전용 프롬프트
                         trans_prompt = """
                         당신은 친절한 어린이 영어 선생님입니다. 
                         이미지에 있는 영어 문장들을 모두 읽고 아래 JSON 형식으로 반환하세요.
                         1. "original": 영어 문장 원문
                         2. "pronunciation": 해당 문장의 자연스러운 한글 발음
-                        3. "translation": 해당 문장의 한국어 뜻 (어린이가 이해하기 쉽게)
-                        
+                        3. "translation": 해당 문장의 한국어 뜻
                         문장이 여러 개라면 배열 형식으로 응답하고, 마크다운 없이 순수 JSON만 출력하세요.
                         """
                         response = model.generate_content([trans_prompt, image])
@@ -128,15 +126,60 @@ with main_tabs[1]:
                         st.success("번역이 완료되었습니다!")
                         st.write("---")
                         
+                        # 화면 출력
                         for i, item in enumerate(trans_data, 1):
-                            with st.container():
-                                st.markdown(f"#### {i}. {item.get('original')}")
-                                st.markdown(f"🗣️ **발음:** :red[{item.get('pronunciation')}]")
-                                st.markdown(f"💡 **해석:** {item.get('translation')}")
-                                st.write("")
+                            st.markdown(f"#### {i}. {item.get('original')}")
+                            st.markdown(f"🗣️ **발음:** :red[{item.get('pronunciation')}]")
+                            st.markdown(f"💡 **해석:** {item.get('translation')}")
+                            st.write("")
+
+                        # --- HTML 다운로드 데이터 생성 시작 ---
+                        now_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                        export_trans_html = f"""
+                        <!DOCTYPE html>
+                        <html lang="ko">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <style>
+                                body {{ font-family: 'Malgun Gothic', sans-serif; line-height: 1.6; color: #333; background-color: #f0f2f6; padding: 15px; }}
+                                .container {{ max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }}
+                                .header {{ text-align: center; border-bottom: 3px solid #2ecc71; padding-bottom: 15px; margin-bottom: 20px; }}
+                                h1 {{ color: #2c3e50; font-size: 1.5em; margin-bottom: 5px; }}
+                                .date {{ color: #7f8c8d; font-size: 0.9em; }}
+                                .item {{ margin-bottom: 20px; padding: 15px; border-radius: 8px; background: #fff; border-left: 5px solid #2ecc71; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }}
+                                .original {{ font-size: 1.1em; font-weight: bold; color: #2c3e50; display: block; }}
+                                .pronun {{ color: #e74c3c; font-size: 0.95em; display: block; margin: 5px 0; }}
+                                .trans {{ background: #f9f9f9; padding: 10px; border-radius: 5px; color: #34495e; margin-top: 5px; }}
+                            </style>
+                        </head>
+                        <body>
+                            <div class="container">
+                                <div class="header">
+                                    <h1>🌐 AI 영어 번역 결과지</h1>
+                                    <p class="date">생성일시: {now_date}</p>
+                                </div>
+                        """
+                        for i, item in enumerate(trans_data, 1):
+                            export_trans_html += f"""
+                                <div class="item">
+                                    <span class="original">{i}. {item.get('original')}</span>
+                                    <span class="pronun">🗣️ {item.get('pronunciation')}</span>
+                                    <div class="trans">💡 {item.get('translation')}</div>
+                                </div>
+                            """
+                        export_trans_html += "</div></body></html>"
+
+                        st.download_button(
+                            label="📥 번역 결과 다운로드 (HTML)",
+                            data=export_trans_html,
+                            file_name=f"translation_{datetime.datetime.now().strftime('%m%d_%H%M')}.html",
+                            mime="text/html",
+                            use_container_width=True
+                        )
+                        # --- HTML 다운로드 데이터 생성 끝 ---
                                 
                     except Exception as e:
                         st.error(f"번역 중 오류가 발생했습니다: {e}")
-
     else:
-        st.info("👈 위 탭에서 원하는 기능을 선택하고 사진을 찍어주세요!")
+        st.info("👈 위에서 영어 문장 사진을 찍거나 업로드하면 번역이 시작됩니다!")
