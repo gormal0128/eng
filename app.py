@@ -10,7 +10,7 @@ import datetime  # 날짜 추가를 위해 필요
 # ----------------------------------------
 st.set_page_config(page_title="찰칵! AI 영어 단어장", page_icon="📸", layout="wide")
 
-st.title("📸 찰칵! AI 영어 시험지 & 번역기 📝")
+st.title("📸 찰칵! AI 영어 시험지 메이커 & 번역기 📝")
 st.markdown("**모바일 최적화 HTML 저장 기능이 적용된 대국민용 버전입니다.**")
 st.markdown("---")
 
@@ -22,22 +22,24 @@ except:
     st.stop()
 
 # ----------------------------------------
-# 메인 탭 설정
+# 탭 분리
 # ----------------------------------------
 main_tabs = st.tabs(["📝 영어 테스트", "🔤 영어 번역"])
 
 # ==============================================================================
-# [탭 1] 기존 로직: 영어 테스트 (수정 없이 원본 그대로 유지)
+# [탭 1] 100% 원본 유지 (주신 코드 그대로)
 # ==============================================================================
 with main_tabs[0]:
+    # ----------------------------------------
+    # 2. 메인 로직 (이미지 업로드 및 촬영)
+    # ----------------------------------------
     tab1, tab2 = st.tabs(["📸 카메라로 바로 찍기", "📁 앨범에서 사진 고르기"])
 
     with tab1:
-        # key 추가로 위젯 충돌 방지
-        camera_photo = st.camera_input("카메라 권한을 허용하고 단어장을 찰칵! 찍어주세요", key="test_cam")
+        camera_photo = st.camera_input("카메라 권한을 허용하고 단어장을 찰칵! 찍어주세요")
 
     with tab2:
-        uploaded_file = st.file_uploader("단어장 사진을 올려주세요 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="test_file")
+        uploaded_file = st.file_uploader("단어장 사진을 올려주세요 (JPG, PNG)", type=["jpg", "jpeg", "png"])
 
     final_image = camera_photo or uploaded_file
 
@@ -50,7 +52,7 @@ with main_tabs[0]:
             
         with col_main:
             st.info("사진 분석 준비 완료! 버튼을 눌러주세요.")
-            if st.button("🚀 AI 시험지 만들기!", use_container_width=True, key="test_btn"):
+            if st.button("🚀 AI 시험지 만들기!", use_container_width=True):
                 with st.spinner("AI가 분석 중입니다... (약 15~20초 소요)"):
                     try:
                         model = genai.GenerativeModel('gemini-flash-latest')
@@ -88,7 +90,7 @@ with main_tabs[0]:
                         st.success("🎉 시험지가 완성되었습니다!")
                         
                         # ----------------------------------------
-                        # 화면 출력 (원본 로직 그대로)
+                        # 3. 화면 출력
                         # ----------------------------------------
                         st.markdown("---")
                         st.subheader("📖 1단계: 공부하기")
@@ -122,6 +124,7 @@ with main_tabs[0]:
                         for i, item in enumerate(quiz3, 1):
                             target = item.get('word_in_example', '')
                             ex_text = item.get('example', '')
+                            # 💡 [수정] 화면 출력 시 한글 발음 제거
                             if target:
                                 blanked = ex_text.replace(target, "______").replace(target.capitalize(), "______")
                                 st.write(f"**{i})** {blanked}")
@@ -129,11 +132,12 @@ with main_tabs[0]:
                                 st.write(f"**{i})** {ex_text}")
 
                         # ----------------------------------------
-                        # HTML 데이터 생성 (원본 로직 그대로)
+                        # 4. HTML 데이터 생성 (날짜 추가 & 3단계 발음 제거)
                         # ----------------------------------------
                         st.markdown("---")
                         st.subheader("💾 시험지 저장하기")
                         
+                        # 현재 날짜 가져오기
                         now_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
                         export_html = f"""
@@ -163,22 +167,23 @@ with main_tabs[0]:
                                     <h1>📝 AI 영어 단어 시험지</h1>
                                     <p class="date">생성일시: {now_date}</p>
                                 </div>
+
                                 <h2>1단계: 공부하기</h2>
                         """
                         for i, item in enumerate(word_data, 1):
                             export_html += f"""
-                                <div class="item">
-                                    <span class="word">{i}) {item.get('part_of_speech', '')} {item.get('word_display')}</span> 
-                                    <span class="pronun">[{item.get('word_pronun')}]</span>
-                                    <div class="box">
-                                        <span class="eng">뜻: {item.get('eng_def')} <small class="pronun">[{item.get('eng_def_pronun')}]</small></span>
-                                        <span class="kor">해석: {item.get('kor_def')}</span>
-                                    </div>
-                                    <div class="box" style="background:#fffbe6;">
-                                        <span class="eng">예문: {item.get('example')} <small class="pronun">[{item.get('example_pronun')}]</small></span>
-                                        <span class="kor">해석: {item.get('example_kor')}</span>
-                                    </div>
+                            <div class="item">
+                                <span class="word">{i}) {item.get('part_of_speech', '')} {item.get('word_display')}</span> 
+                                <span class="pronun">[{item.get('word_pronun')}]</span>
+                                <div class="box">
+                                    <span class="eng">뜻: {item.get('eng_def')} <small class="pronun">[{item.get('eng_def_pronun')}]</small></span>
+                                    <span class="kor">해석: {item.get('kor_def')}</span>
                                 </div>
+                                <div class="box" style="background:#fffbe6;">
+                                    <span class="eng">예문: {item.get('example')} <small class="pronun">[{item.get('example_pronun')}]</small></span>
+                                    <span class="kor">해석: {item.get('example_kor')}</span>
+                                </div>
+                            </div>
                             """
                         
                         export_html += "<h2>2단계: 뜻 보고 단어 쓰기</h2>"
@@ -189,9 +194,11 @@ with main_tabs[0]:
                         for i, item in enumerate(quiz3, 1):
                             target = item.get('word_in_example', '')
                             ex_text = item.get('example', '')
+                            # 💡 [수정] HTML 문서에서도 3단계 한글 발음 제거
                             blanked = ex_text.replace(target, "______").replace(target.capitalize(), "______") if target else ex_text
                             export_html += f"<div class='item'>{i}) {blanked}</div>"
 
+                        # 정답지 섹션 추가
                         export_html += """
                         <div style="page-break-before: always;">
                             <h2>👀 정답지</h2>
@@ -207,35 +214,40 @@ with main_tabs[0]:
                         
                         export_html += "</div></div></div></body></html>"
 
+                        # 💡 [수정] 텍스트 다운로드 버튼 삭제 후 HTML 버튼만 크게 배치
                         st.download_button(
                             label="📥 모바일 전용 시험지 다운로드 (.html)",
                             data=export_html,
                             file_name=f"voca_quiz_{datetime.datetime.now().strftime('%m%d_%H%M')}.html",
                             mime="text/html",
-                            use_container_width=True,
-                            key="test_download"
+                            use_container_width=True
                         )
 
                     except Exception as e:
                         st.error(f"오류가 발생했습니다. ({e})")
+
     else:
         st.info("👈 위에서 사진을 찍거나 업로드하면 시험지가 생성됩니다!")
 
 
 # ==============================================================================
-# [탭 2] 신규 기능: 영어 번역 (발음/해석 제공 및 전용 HTML 다운로드)
+# [탭 2] 영어 번역 (새로운 기능)
 # ==============================================================================
 with main_tabs[1]:
+    st.subheader("🔤 사진 찍어 바로 번역")
+    st.info("영어 문장을 찍으면 한글 발음과 해석을 보여주고 파일로 저장할 수 있습니다.")
+    
     sub_tab3, sub_tab4 = st.tabs(["📸 카메라", "📁 앨범"])
     
     with sub_tab3:
+        # Streamlit 위젯 충돌을 막기 위해 key 추가
         cam_trans = st.camera_input("번역할 문장을 찍어주세요", key="trans_cam")
     with sub_tab4:
-        file_trans = st.file_uploader("사진 업로드", type=["jpg", "jpeg", "png"], key="trans_file")
+        file_trans = st.file_uploader("사진 업로드 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="trans_file")
     
     final_trans_img = cam_trans or file_trans
 
-    if final_trans_img:
+    if final_trans_img is not None:
         image = Image.open(final_trans_img)
         col_img, col_main = st.columns([1, 2])
         
